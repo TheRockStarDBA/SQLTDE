@@ -230,7 +230,6 @@ function Import-SQLModule
     [OutputType([int])]
     param
     (
-        
 	)
         Begin
         {
@@ -254,6 +253,5 @@ function Import-SQLModule
 
         End
         {
-		
         }
 }

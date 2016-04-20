@@ -257,5 +257,3 @@ function Import-SQLModule
 		
         }
 }
-
-#Export-ModuleMember -Function "New-SQLMasterKey","New-SQLServerCertificate","Backup-SQLServerCertificate","Set-SQLDatabaseEncryption"

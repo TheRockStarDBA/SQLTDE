@@ -197,6 +197,76 @@ function Set-SQLDatabaseEncryption
         }
 }
 
+function Remove-SQLDatabaseEncryption
+{
+    [CmdletBinding()]
+    [OutputType([int])]
+    param
+    (
+        
+        [Parameter(Mandatory=$true, ValueFromPipelineByPropertyName=$true,Position=0)]
+        $SQLInstance,
+		[Parameter(Mandatory=$true, ValueFromPipelineByPropertyName=$true,Position=1)]
+        $Database,
+		[Switch]$RemoveKey = $false
+	)
+        Begin
+        {
+			Import-SQLModule
+			$splitName = ($SQLInstance -split "\\")
+			$splitname = $splitname[$splitName.Count-1] -replace "-",""
+			
+        }
+
+        Process
+        {
+			
+			try {
+				$SQL_DB_ENCRYPT_QUERY = "ALTER DATABASE {0} SET ENCRYPTION OFF" -f $Database
+				Invoke-Sqlcmd -query $SQL_DB_ENCRYPT_QUERY -ServerInstance $SQLInstance -Database $Database 
+				Write-Verbose "Removed Database Encryption Successfully"
+				
+			}
+			catch [System.Exception] {
+				Write-Error "Failed to remove database encryption"
+			}
+			finally {
+				
+			}
+			if($RemoveKey){
+				try
+				{
+					$i = 0
+					do {
+						$i++
+						if($i -gt 10){
+							Write-Error "Could not determine if encryption has been disabled. Key has not been removed."
+						}
+						$DB = Get-SQLUserDBs -SQLInstance $SQLInstance | Where-Object{$_.Database -eq $Database}
+					} until ($DB.Encrypted -eq $false)
+					$SQL_DB_KEY_QUERY = "DROP DATABASE ENCRYPTION KEY"
+					Invoke-Sqlcmd -query $SQL_DB_Key_QUERY -ServerInstance $SQLInstance -Database $Database 
+					Write-Verbose "Database Key Removed Successfully"
+				}
+				catch [System.Exception]
+				{
+					Write-Error "Failed to remove database encryption key"
+				}
+				finally
+				{
+
+				}
+			
+			}
+        }
+
+        End
+        {
+
+        }
+				
+}
+
 function Show-Password
 {
     [CmdletBinding()]
@@ -254,4 +324,53 @@ function Import-SQLModule
         End
         {
         }
+}
+
+function Get-SQLUserDBs{
+	[CmdletBinding()]
+    [OutputType([int])]
+    param
+    (
+		[Parameter(Mandatory=$true, ValueFromPipelineByPropertyName=$true,Position=0)]
+        $SQLInstance
+	)
+	Begin
+	{
+		$Database = "master"
+		$returnvalues = @()
+	}
+	Process
+	{
+		
+		try
+		{
+			$SQL_ALL_DB_QUERY = "SELECT name, is_encrypted FROM sys.databases WHERE name NOT IN('model','master','msdb','tempdb')"
+			$Dbs = Invoke-Sqlcmd -query $SQL_ALL_DB_QUERY -ServerInstance $SQLInstance -Database $Database 
+			Write-Verbose "Querying for all user DBs"
+		}
+		catch [System.Exception]
+		{
+			Write-Error "Failed to enumerate databases"
+		}
+		finally
+		{
+			
+		}
+		
+		foreach($DB in $Dbs){
+			$returnvalues += [PSCustomObject]@{
+				Database = $DB.name
+				Encrypted = $DB.is_encrypted
+				SQLInstance = $SQLInstance
+			}
+		}
+		$returnvalues		
+						
+	}
+
+	End
+	{
+		
+	}
+	
 }

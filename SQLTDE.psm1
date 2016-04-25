@@ -179,7 +179,7 @@ function Set-SQLDatabaseEncryption
 			try {
 				$SQL_DB_ENCRYPT_QUERY = "ALTER DATABASE {0} SET ENCRYPTION ON" -f $Database
 				Invoke-Sqlcmd -query $SQL_DB_ENCRYPT_QUERY -ServerInstance $SQLInstance -Database $Database 
-				Write-Verbose "Database Key Created Successfully"
+				Write-Verbose "Database Encrypted Successfully"
 				
 			}
 			catch [System.Exception] {

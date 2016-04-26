@@ -241,7 +241,9 @@ function Remove-SQLDatabaseEncryption
 						if($i -gt 10){
 							Write-Error "Could not determine if encryption has been disabled. Key has not been removed."
 						}
+
 						Start-Sleep -Milliseconds 100
+
 						$DB = Get-SQLUserDBs -SQLInstance $SQLInstance | Where-Object{$_.Database -eq $Database}
 					} until ($DB.Encrypted -eq $false)
 					$SQL_DB_KEY_QUERY = "DROP DATABASE ENCRYPTION KEY"

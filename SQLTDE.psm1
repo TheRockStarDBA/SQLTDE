@@ -25,7 +25,7 @@ function New-SQLMasterKey
 				Invoke-Sqlcmd -query $MASTER_KEY_QUERY -ServerInstance $SQLInstance -Database $masterDB
 				Write-Verbose "Created Master Key for instance $SQLInstance"
 			}
-			catch [System.Exception]
+			catch
 			{
 				Write-Error "Error creating Master Key"
 			}
@@ -58,8 +58,7 @@ function New-SQLServerCertificate
         {
 			Import-SQLModule
 			$masterDB = "master" 
-			$splitName = ($SQLInstance -split "\\")
-			$splitname = $splitname[$splitName.Count-1] -replace "-",""
+			
 			
         }
 
@@ -67,11 +66,12 @@ function New-SQLServerCertificate
         {
 			try
 			{
+				$splitName = ($SQLInstance -split "\\")[-1] -replace "-",""
 				$SQL_SERVER_CERT_QUERY = "CREATE CERTIFICATE {0}_Cert WITH SUBJECT = '{1}'" -f $splitname,$Subject
 				Invoke-Sqlcmd -query $SQL_SERVER_CERT_QUERY -ServerInstance $SQLInstance -Database $masterDB 
 				Write-Verbose "Certificate Created Successfully"
 			}
-			catch [System.Exception]
+			catch
 			{
 				Write-Error "Failed to create certificate"
 			}
@@ -115,13 +115,12 @@ function Backup-SQLServerCertificate
 			else{
 				$source = $SQLServer.DefaultFile
 			}
-			$splitName = ($SQLInstance -split "\\")
-			$splitname = $splitname[$splitName.Count-1] -replace "-",""
+			
         }
 
         Process
         {
-
+			$splitName = ($SQLInstance -split "\\")[-1] -replace "-",""
 			$SQL_SERVER_CERT_BACKUP_QUERY = "BACKUP CERTIFICATE {0}_Cert TO FILE = '{0}_Cert' WITH PRIVATE KEY (FILE = '{0}_Key', ENCRYPTION BY PASSWORD = '{1}')" -f $splitname,(Show-Password -EncryptedPassword $EncryptionPassword)
 			Invoke-Sqlcmd -query $SQL_SERVER_CERT_BACKUP_QUERY -ServerInstance $SQLInstance -Database $masterDB
 			if($Path -eq $null){
@@ -154,8 +153,7 @@ function Set-SQLDatabaseEncryption
         Begin
         {
 			Import-SQLModule
-			$splitName = ($SQLInstance -split "\\")
-			$splitname = $splitname[$splitName.Count-1] -replace "-",""
+			
 			
         }
 
@@ -163,11 +161,12 @@ function Set-SQLDatabaseEncryption
         {
 			try
 			{
+				$splitName = ($SQLInstance -split "\\")[-1] -replace "-",""
 				$SQL_DB_KEY_QUERY = "CREATE DATABASE ENCRYPTION KEY WITH ALGORITHM = AES_128 ENCRYPTION BY SERVER CERTIFICATE {0}_Cert" -f $splitname
-				Invoke-Sqlcmd -query $SQL_DB_Key_QUERY -ServerInstance $SQLInstance -Database $Database 
+				Invoke-Sqlcmd -query $SQL_DB_Key_QUERY -ServerInstance $SQLInstance -Database $Database -ErrorAction SilentlyContinue
 				Write-Verbose "Database Key Created Successfully"
 			}
-			catch [System.Exception]
+			catch
 			{
 				Write-Error "Failed to create certificate"
 			}
@@ -182,7 +181,7 @@ function Set-SQLDatabaseEncryption
 				Write-Verbose "Database Encrypted Successfully"
 				
 			}
-			catch [System.Exception] {
+			catch{
 				Write-Error "Failed to encrypt database"
 			}
 			finally {
@@ -213,8 +212,7 @@ function Remove-SQLDatabaseEncryption
         Begin
         {
 			Import-SQLModule
-			$splitName = ($SQLInstance -split "\\")
-			$splitname = $splitname[$splitName.Count-1] -replace "-",""
+			
 			
         }
 
@@ -222,12 +220,13 @@ function Remove-SQLDatabaseEncryption
         {
 			
 			try {
+				$splitName = ($SQLInstance -split "\\")[-1] -replace "-",""
 				$SQL_DB_ENCRYPT_QUERY = "ALTER DATABASE {0} SET ENCRYPTION OFF" -f $Database
 				Invoke-Sqlcmd -query $SQL_DB_ENCRYPT_QUERY -ServerInstance $SQLInstance -Database $Database 
 				Write-Verbose "Removed Database Encryption Successfully"
 				
 			}
-			catch [System.Exception] {
+			catch{
 				Write-Error "Failed to remove database encryption"
 			}
 			finally {
@@ -242,13 +241,14 @@ function Remove-SQLDatabaseEncryption
 						if($i -gt 10){
 							Write-Error "Could not determine if encryption has been disabled. Key has not been removed."
 						}
+						Start-Sleep -Milliseconds 500
 						$DB = Get-SQLUserDBs -SQLInstance $SQLInstance | Where-Object{$_.Database -eq $Database}
 					} until ($DB.Encrypted -eq $false)
 					$SQL_DB_KEY_QUERY = "DROP DATABASE ENCRYPTION KEY"
 					Invoke-Sqlcmd -query $SQL_DB_Key_QUERY -ServerInstance $SQLInstance -Database $Database 
 					Write-Verbose "Database Key Removed Successfully"
 				}
-				catch [System.Exception]
+				catch
 				{
 					Write-Error "Failed to remove database encryption key"
 				}
@@ -338,6 +338,7 @@ function Get-SQLUserDBs{
 	{
 		$Database = "master"
 		$returnvalues = @()
+		Import-SQLModule
 	}
 	Process
 	{
@@ -348,7 +349,7 @@ function Get-SQLUserDBs{
 			$Dbs = Invoke-Sqlcmd -query $SQL_ALL_DB_QUERY -ServerInstance $SQLInstance -Database $Database 
 			Write-Verbose "Querying for all user DBs"
 		}
-		catch [System.Exception]
+		catch
 		{
 			Write-Error "Failed to enumerate databases"
 		}
